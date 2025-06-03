@@ -7,18 +7,24 @@ function updateTime() {
 setInterval(updateTime, 1000);
 updateTime();
 
-fetch('https://ipapi.co/json/')
-  .then(r => r.json())
-  .then(data => {
-    document.getElementById('ip').textContent = data.ip || 'Unknown';
-    document.getElementById('location').textContent = `${data.city}, ${data.region}, ${data.country_name}`;
+// Fetch IP address (IPv4) and location
+Promise.all([
+  fetch('https://api.ipify.org?format=json').then(r => r.json()),
+  fetch('https://ipapi.co/json/').then(r => r.json())
+])
+  .then(([ipData, locData]) => {
+    document.getElementById('ip').textContent = ipData.ip || locData.ip || 'Unknown';
+    document.getElementById('location').textContent = `${locData.city}, ${locData.region}, ${locData.country_name}`;
   })
   .catch(() => {
     document.getElementById('ip').textContent = 'Unavailable';
     document.getElementById('location').textContent = 'Unavailable';
   });
 
-fetch('https://api.countapi.xyz/hit/visitor-stats-demo/github')
+const countNamespace = 'visitor-stats-demo';
+
+// Update total page views
+fetch(`https://api.countapi.xyz/hit/${countNamespace}/pageviews`)
   .then(r => r.json())
   .then(data => {
     document.getElementById('pageViews').textContent = data.value;
@@ -26,3 +32,18 @@ fetch('https://api.countapi.xyz/hit/visitor-stats-demo/github')
   .catch(() => {
     document.getElementById('pageViews').textContent = 'Unavailable';
   });
+
+// Track live sessions
+fetch(`https://api.countapi.xyz/update/${countNamespace}/sessions/?amount=1`)
+  .then(() => fetch(`https://api.countapi.xyz/get/${countNamespace}/sessions`))
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('liveSessions').textContent = data.value;
+  })
+  .catch(() => {
+    document.getElementById('liveSessions').textContent = 'Unavailable';
+  });
+
+window.addEventListener('beforeunload', () => {
+  navigator.sendBeacon(`https://api.countapi.xyz/update/${countNamespace}/sessions/?amount=-1`);
+});
